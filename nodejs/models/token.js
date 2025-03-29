@@ -1,5 +1,9 @@
 const mongoose = require("mongoose");
 
-const TokenSchemaBigo = new mongoose.Schema({
+const tokenSchema = new mongoose.Schema({
   token: { type: String, unique: true },
 });
+
+const Token = mongoose.model("TokenTiktokGithub", tokenSchema);
+
+module.exports = Token;

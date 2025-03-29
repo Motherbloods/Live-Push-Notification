@@ -1,12 +1,11 @@
 const cheerio = require("cheerio");
 const axios = require("axios");
-const mongoose = require("mongoose");
 require("dotenv").config();
 
-const admin = require("./utils/firebase");
-const bot = require("./utils/telegram");
+const admin = require("../utils/firebase.js");
+const bot = require("../utils/telegram.js");
 
-const LiveStatus = require("../models/live_statusjs");
+const LiveStatus = require("../models/live_status.js");
 const Token = require("../models/token.js");
 
 const USERNAME_TELEGRAM = process.env.USERNAME_TELEGRAM;
