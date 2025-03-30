@@ -11,10 +11,10 @@ const Token = require("../models/token.js");
 const USERNAME_TELEGRAM = process.env.USERNAME_TELEGRAM;
 const USERNAME_TIKTOK = process.env.USERNAME_TIKTOK;
 
-const getDataURL = async () => {
+const getDataURL = async (req, res) => {
   const URL = process.env.URLTARGET;
   try {
-    const response = await axios.get(URL, {
+    const response = await axios.get(`${URL}/${USERNAME_TIKTOK}/live`, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
@@ -28,7 +28,7 @@ const getDataURL = async () => {
     return res.status(500).json({ message: "Terjadi kesalahan" });
   }
 };
-const storeFCMToken = async () => {
+const storeFCMToken = async (req, res) => {
   try {
     const { token } = req.body;
     if (!token) {
@@ -55,20 +55,22 @@ const checkLiveStatus = async (userData) => {
   try {
     const $ = cheerio.load(userData);
     const scriptContent = $("#SIGI_STATE").html();
+    const isLive = /"isLiveBroadcast"\s*:\s*true/.test(userData);
 
-    if (!scriptContent) {
-      console.log("Tidak menemukan data live status.");
+    if (!scriptContent && !isLive) {
       return { isLive: false, message: "Data tidak ditemukan" };
     }
+
     const sigIState = JSON.parse(scriptContent);
     const status = sigIState?.LiveRoom?.liveRoomUserInfo?.user?.status;
     let message = "";
 
-    if (status == 2) {
+    if (status == 2 || isLive) {
       message = `${USERNAME_TIKTOK} sedang live`;
       await bot.sendMessage(USERNAME_TELEGRAM, message);
 
-      const shouldNotify = updateLiveStatus(USERNAME_TIKTOK, true);
+      const shouldNotify = await updateLiveStatus(USERNAME_TIKTOK, true);
+      console.log('ini should',shouldNotify)
       if (shouldNotify) {
         await sendNotification("Live Alert!", "Akun sedang live di TikTok!");
       } else {
@@ -81,12 +83,12 @@ const checkLiveStatus = async (userData) => {
       return { isLive: false, message };
     }
   } catch (e) {
-    console.error("Gagal memeriksa live status:", error);
+    console.error("Gagal memeriksa live status:", e);
     return { isLive: false, message: "Terjadi kesalahan" };
   }
 };
 
-const sendNotification = async () => {
+const sendNotification = async (title, body) => {
   try {
     const tokens = await Token.find({});
     const registrationTokens = tokens.map((t) => t.token);
@@ -112,7 +114,7 @@ const sendNotification = async () => {
       tokens: registrationTokens,
     };
 
-    const response = await admin.messaging().sendEachForMultiCast(message);
+    const response = await admin.messaging().sendEachForMulticast(message);
     console.log("Detailed Response:", JSON.stringify(response, null, 2));
 
     return response;
