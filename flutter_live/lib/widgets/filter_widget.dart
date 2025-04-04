@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/live_session.dart';
+import 'package:intl/intl.dart';
 
 class FiltersWidget extends StatelessWidget {
   final List<LiveSession> liveSessions;
@@ -11,15 +12,15 @@ class FiltersWidget extends StatelessWidget {
     required this.username,
   }) : super(key: key);
 
-  // Menghitung sesi live terpanjang
+  // Calculate the longest session
   LiveSession? _getLongestSession() {
     if (liveSessions.isEmpty) return null;
 
     return liveSessions
-        .reduce((a, b) => a.duration.inMinutes > b.duration.inMinutes ? a : b);
+        .reduce((a, b) => a.durationValue > b.durationValue ? a : b);
   }
 
-  // Menghitung hari yang paling sering untuk live
+  // Calculate the most frequent day for live sessions
   String _getMostFrequentDay() {
     if (liveSessions.isEmpty) return 'Tidak ada data';
 
@@ -34,30 +35,31 @@ class FiltersWidget extends StatelessWidget {
     ];
 
     Map<int, int> dayFrequency = {};
-    Map<int, Duration> dayDurations = {};
+    Map<int, int> dayDurations = {};
     for (var session in liveSessions) {
-      int weekday = session.startTime.weekday;
+      final localTime = session.startTime.toUtc().add(Duration(hours: 7));
+      int weekday = localTime.weekday;
       dayFrequency[weekday] = (dayFrequency[weekday] ?? 0) + 1;
       dayDurations[weekday] =
-          (dayDurations[weekday] ?? Duration()) + session.duration;
+          (dayDurations[weekday] ?? 0) + session.durationValue;
     }
 
     int? mostFrequentWeekday;
     int maxFrequency = 0;
-    Duration maxDuration = Duration();
+    int maxDuration = 0;
 
     dayFrequency.forEach((day, frequency) {
-      // Memilih hari yang memiliki frekuensi lebih banyak
+      // Choose the day with higher frequency
       if (frequency > maxFrequency) {
         maxFrequency = frequency;
         mostFrequentWeekday = day;
-        maxDuration = dayDurations[day] ?? Duration();
+        maxDuration = dayDurations[day] ?? 0;
       }
-      // Jika frekuensinya sama, bandingkan durasi total
+      // If frequencies are equal, compare total duration
       else if (frequency == maxFrequency &&
-          (dayDurations[day] ?? Duration()) > maxDuration) {
+          (dayDurations[day] ?? 0) > maxDuration) {
         mostFrequentWeekday = day;
-        maxDuration = dayDurations[day] ?? Duration();
+        maxDuration = dayDurations[day] ?? 0;
       }
     });
 
@@ -68,10 +70,30 @@ class FiltersWidget extends StatelessWidget {
     }
   }
 
-  // Fungsi untuk menampilkan popup informasi sesi live terpanjang
+  // Function to format duration from minutes
+  String _formatDuration(int minutes) {
+    int hours = minutes ~/ 60;
+    int remainingMinutes = minutes % 60;
+    return '${hours}h ${remainingMinutes}m';
+  }
+
+  // Function to format time from DateTime
+  String _formatTime(DateTime time) {
+    return DateFormat('HH:mm').format(time);
+  }
+
+  // Function to show detailed info for the longest session
   void _showLongestSessionDialog(BuildContext context) {
     LiveSession? longestSession = _getLongestSession();
     if (longestSession == null) return;
+
+    DateTime localTime =
+        longestSession.startTime.toUtc().add(Duration(hours: 7));
+
+    // Calculate end time
+    DateTime endTime = longestSession.duration != null
+        ? localTime.add(Duration(minutes: longestSession.durationValue))
+        : localTime;
 
     showDialog(
       context: context,
@@ -82,11 +104,12 @@ class FiltersWidget extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('⏳ Durasi: ${longestSession.formattedDuration}'),
               Text(
-                  '📅 Tanggal: ${longestSession.startTime.toLocal().toString().split(' ')[0]}'), // Tampilkan tanggal dari startTime
+                  '⏳ Durasi: ${_formatDuration(longestSession.durationValue)}'),
               Text(
-                  '🕒 Waktu: ${longestSession.startTimeString} - ${longestSession.endTimeString}'),
+                  '📅 Tanggal: ${DateFormat('dd/MM/yyyy').format(longestSession.startTime)}'),
+              Text(
+                  '🕒 Waktu: ${_formatTime(longestSession.startTime)} - ${_formatTime(endTime)}'),
             ],
           ),
           actions: [
@@ -100,27 +123,25 @@ class FiltersWidget extends StatelessWidget {
     );
   }
 
-  // Fungsi untuk menampilkan popup informasi hari paling sering live
+  // Function to show detailed info for the most frequent day
   void _showMostFrequentDayDialog(BuildContext context) {
     String mostFrequentDay = _getMostFrequentDay();
 
-    // Mendapatkan sesi-sesi live pada hari yang paling sering
+    // Get live sessions on the most frequent day
     List<LiveSession> sessionsOnMostFrequentDay = liveSessions.where((session) {
       return session.startTime.weekday ==
           _getMostFrequentWeekdayIndex(mostFrequentDay);
     }).toList();
 
-    // Menentukan sesi dengan durasi terpanjang pada hari tersebut
+    // Find the longest session on that day
     LiveSession? longestSessionOnDay = sessionsOnMostFrequentDay.isEmpty
         ? null
-        : sessionsOnMostFrequentDay.reduce(
-            (a, b) => a.duration.inMinutes > b.duration.inMinutes ? a : b);
+        : sessionsOnMostFrequentDay
+            .reduce((a, b) => a.durationValue > b.durationValue ? a : b);
 
     String firstSessionDate = sessionsOnMostFrequentDay.isNotEmpty
-        ? sessionsOnMostFrequentDay.first.startTime
-            .toLocal()
-            .toString()
-            .split(' ')[0]
+        ? DateFormat('dd/MM/yyyy')
+            .format(sessionsOnMostFrequentDay.first.startTime)
         : 'Tidak ada data';
 
     showDialog(
@@ -136,16 +157,17 @@ class FiltersWidget extends StatelessWidget {
                   '📅 Hari yang paling sering live adalah **$mostFrequentDay**. pada tanggal $firstSessionDate.'),
               SizedBox(height: 10),
               Text('Sesi Live pada hari ini:'),
-              // Daftar sesi live dan jamnya
+              // List of live sessions and their times
               ...sessionsOnMostFrequentDay.map((session) {
                 return Text(
-                    '${session.startTimeString} - ${session.formattedDuration}');
+                    '${_formatTime(session.startTime)} - ${_formatDuration(session.durationValue)}');
               }).toList(),
               if (longestSessionOnDay != null) ...[
                 SizedBox(height: 10),
                 Text(
-                    '⏳ Sesi Live Terpanjang pada hari ini: ${longestSessionOnDay.formattedDuration} - '
-                    '🕒 Waktu: ${longestSessionOnDay.startTimeString} - ${longestSessionOnDay.endTimeString}'),
+                    '⏳ Sesi Live Terpanjang pada hari ini: ${_formatDuration(longestSessionOnDay.durationValue)} - '
+                    '🕒 Waktu: ${_formatTime(longestSessionOnDay.startTime)} - '
+                    '${_formatTime(longestSessionOnDay.startTime.add(Duration(minutes: longestSessionOnDay.durationValue)))}'),
               ],
             ],
           ),
@@ -160,7 +182,7 @@ class FiltersWidget extends StatelessWidget {
     );
   }
 
-  // Fungsi untuk mendapatkan index weekday berdasarkan nama hari
+  // Function to get weekday index based on day name
   int _getMostFrequentWeekdayIndex(String dayName) {
     final dayNames = [
       'Senin',
@@ -172,7 +194,7 @@ class FiltersWidget extends StatelessWidget {
       'Minggu'
     ];
     return dayNames.indexOf(dayName) +
-        1; // Menambahkan 1 karena weekday di Dart mulai dari 1 (Senin) sampai 7 (Minggu)
+        1; // Add 1 because Dart weekdays start from 1 (Monday) to 7 (Sunday)
   }
 
   @override
@@ -197,7 +219,7 @@ class FiltersWidget extends StatelessWidget {
           ),
           SizedBox(height: 16),
 
-          // Live Paling Lama (Dapat diklik)
+          // Longest Live Session (Clickable)
           GestureDetector(
             onTap: () => _showLongestSessionDialog(context),
             child: Container(
@@ -217,7 +239,9 @@ class FiltersWidget extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    _getLongestSession()?.formattedDuration ?? '0h 0m',
+                    _getLongestSession() != null
+                        ? _formatDuration(_getLongestSession()!.durationValue)
+                        : '0h 0m',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -230,7 +254,7 @@ class FiltersWidget extends StatelessWidget {
           ),
           SizedBox(height: 10),
 
-          // Hari Paling Sering (Dapat diklik)
+          // Most Frequent Day (Clickable)
           GestureDetector(
             onTap: () => _showMostFrequentDayDialog(context),
             child: Container(

@@ -12,7 +12,6 @@ class HeaderWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    List<LiveSession> liveSessions = getSampleData();
     return Container(
       height: 60,
       decoration: BoxDecoration(
@@ -23,7 +22,7 @@ class HeaderWidget extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Username di kiri
+          // Username on the left
           Flexible(
             child: Text(
               username,
@@ -36,24 +35,63 @@ class HeaderWidget extends StatelessWidget {
             ),
           ),
 
-          // Icon notifikasi di kanan
+          // Notification icon on the right
           GestureDetector(
             onTap: () {
-              // Navigasi ke halaman LiveSessionsPage ketika ikon notifikasi diklik
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => LiveSessionsPage(
-                    liveSessions: liveSessions, // Daftar sesi live
-                    username: username, // Nama pengguna
-                  ),
-                ),
-              );
+              // Fetch live sessions when notification icon is clicked
+              _navigateToLiveSessionsPage(context);
             },
-            child: Icon(Icons.notifications),
+            child: Icon(
+              Icons.notifications,
+              color: Colors.white,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  // Method to fetch live sessions and navigate to LiveSessionsPage
+  void _navigateToLiveSessionsPage(BuildContext context) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        },
+      );
+
+      // Fetch live sessions from backend
+      List<LiveSession> liveSessions = await fetchLiveSessions();
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Navigate to LiveSessionsPage
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LiveSessionsPage(
+            liveSessions: liveSessions,
+            username: username,
+          ),
+        ),
+      );
+    } catch (e) {
+      // Close loading dialog
+      Navigator.pop(context);
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load live sessions: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

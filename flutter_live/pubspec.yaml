@@ -49,6 +49,7 @@ dev_dependencies:
   fl_chart: ^0.55.0  # Untuk grafik batang
   intl: ^0.17.0      # Untuk format tanggal dan waktu
   table_calendar: ^3.0.6  # Untuk pemilih kalender
+  http: ^1.2.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

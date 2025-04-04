@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    const String username = 'user_live123';
+    const String username = '@user123';
     return MaterialApp(
       title: 'Live Notifier',
       theme: ThemeData(

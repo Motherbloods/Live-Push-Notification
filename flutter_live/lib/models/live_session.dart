@@ -1,74 +1,65 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+
 class LiveSession {
   final DateTime startTime;
-  final Duration duration;
+  final int? duration; // in minutes
   final String username;
   final String date;
 
   LiveSession({
     required this.startTime,
-    required this.duration,
+    this.duration,
     required this.username,
     required this.date,
   });
 
-  DateTime get endTime => startTime.add(duration);
-
-  // Metode helper untuk konversi durasi ke format string
-  String get formattedDuration {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes % 60;
-    return '${hours}h ${minutes}m';
+  factory LiveSession.fromJson(Map<String, dynamic> json) {
+    return LiveSession(
+      startTime: DateTime.parse(json['startTime']),
+      duration: json['duration'],
+      username: json['username'],
+      date: json['date'],
+    );
+  }
+  int get durationValue {
+    return duration ?? 0; // Return 0 if duration is null
   }
 
-  // Metode helper untuk mendapatkan jam mulai dan jam akhir sebagai string
+  // Helper functions for formatting time and duration
+  String get formattedDuration {
+    if (duration == null) return 'In progress';
+
+    int hours = duration! ~/ 60;
+    int remainingMinutes = duration! % 60;
+    return '${hours}h ${remainingMinutes}m';
+  }
+
   String get startTimeString {
-    return '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
+    // Convert to GMT+7
+    DateTime localTime = startTime.toUtc().add(Duration(hours: 7));
+    return DateFormat('HH:mm').format(localTime);
   }
 
   String get endTimeString {
-    final end = endTime;
-    return '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
+    if (duration == null) return 'TBD';
+
+    // Convert to GMT+7
+    DateTime localTime = startTime.toUtc().add(Duration(hours: 7));
+    DateTime endTime = localTime.add(Duration(minutes: duration!));
+    return DateFormat('HH:mm').format(endTime);
   }
 }
 
-// Data contoh untuk aplikasi
-List<LiveSession> getSampleData() {
-  return [
-    LiveSession(
-      startTime: DateTime(2025, 4, 1, 8, 0),
-      duration: Duration(hours: 1),
-      username: 'user_live123',
-      date: '01/04/2025',
-    ),
-    LiveSession(
-      startTime: DateTime(2025, 4, 1, 0, 0),
-      duration: Duration(hours: 1, minutes: 10),
-      username: 'user_live123',
-      date: '02/04/2025',
-    ),
-    LiveSession(
-      startTime: DateTime(2025, 4, 4, 2, 0),
-      duration: Duration(hours: 1, minutes: 20),
-      username: 'user_live123',
-      date: '02/04/2025',
-    ),
-    LiveSession(
-      startTime: DateTime(2025, 3, 30, 10, 0),
-      duration: Duration(hours: 2, minutes: 05),
-      username: 'user_live123',
-      date: '02/04/2025',
-    ),
-    LiveSession(
-      startTime: DateTime(2025, 3, 30, 13, 0),
-      duration: Duration(hours: 1, minutes: 10),
-      username: 'user_live123',
-      date: '02/04/2025',
-    ),
-    LiveSession(
-      startTime: DateTime(2025, 4, 1, 12, 0),
-      duration: Duration(hours: 1, minutes: 45),
-      username: 'user_live123',
-      date: '02/04/2025',
-    ),
-  ];
+Future<List<LiveSession>> fetchLiveSessions() async {
+  final response =
+      await http.get(Uri.parse("http://192.168.88.30:3000/livesessions"));
+
+  if (response.statusCode == 200) {
+    List<dynamic> data = json.decode(response.body);
+    return data.map((json) => LiveSession.fromJson(json)).toList();
+  } else {
+    throw Exception("Failed to load live sessions");
+  }
 }

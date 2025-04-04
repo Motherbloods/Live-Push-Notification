@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
 import '../models/live_session.dart';
 
 class LiveChart extends StatelessWidget {
@@ -13,6 +12,20 @@ class LiveChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Calculate maximum duration in hours for chart scaling
+    double maxDurationInHours = 4.0; // Default fallback value
+
+    if (liveSessions.isNotEmpty) {
+      // Find the maximum duration among all sessions
+      final maxDuration = liveSessions
+          .map((s) => s.durationValue)
+          .reduce((a, b) => a > b ? a : b);
+      // Convert to hours and round up to the next whole number for better display
+      maxDurationInHours = (maxDuration / 60).ceil().toDouble();
+      // Ensure we have at least a minimum scale (1 hour)
+      maxDurationInHours = maxDurationInHours < 1 ? 1 : maxDurationInHours;
+    }
+
     return Container(
       height: 220,
       decoration: BoxDecoration(
@@ -44,7 +57,8 @@ class LiveChart extends StatelessWidget {
                 : BarChart(
                     BarChartData(
                       alignment: BarChartAlignment.spaceAround,
-                      maxY: 4,
+                      maxY: maxDurationInHours, // Use dynamic maxY here
+                      minY: 0, // Make sure bar chart starts from 0
                       barTouchData: BarTouchData(
                         enabled: true,
                         touchTooltipData: BarTouchTooltipData(
@@ -53,11 +67,11 @@ class LiveChart extends StatelessWidget {
                             if (groupIndex >= liveSessions.length) return null;
 
                             final session = liveSessions[groupIndex];
-                            final hours = session.duration.inHours;
-                            final minutes = session.duration.inMinutes % 60;
+                            final hours = session.durationValue ~/ 60;
+                            final minutes = session.durationValue % 60;
 
                             return BarTooltipItem(
-                              '${DateFormat('HH:mm').format(session.startTime)}\n$hours jam $minutes menit',
+                              '${session.startTimeString}\n$hours jam $minutes menit',
                               TextStyle(color: Colors.white),
                             );
                           },
@@ -72,11 +86,9 @@ class LiveChart extends StatelessWidget {
                               int index = value.toInt();
                               if (index >= 0 && index < liveSessions.length) {
                                 return Transform.translate(
-                                  offset: Offset(0,
-                                      5), // Geser ke bawah agar tidak kepotong
+                                  offset: Offset(0, 5),
                                   child: Text(
-                                    DateFormat('HH:mm')
-                                        .format(liveSessions[index].startTime),
+                                    liveSessions[index].startTimeString,
                                     style: TextStyle(
                                         color: Colors.grey, fontSize: 10),
                                   ),
@@ -91,20 +103,24 @@ class LiveChart extends StatelessWidget {
                           sideTitles: SideTitles(
                             showTitles: true,
                             getTitlesWidget: (double value, TitleMeta meta) {
-                              String text = '';
-                              if (value == 0) text = '0';
-                              if (value == 1) text = '1h';
-                              if (value == 2) text = '2h';
-                              if (value == 3) text = '3h';
-
-                              return SideTitleWidget(
-                                axisSide: meta.axisSide,
-                                child: Text(text,
+                              // Dynamically generate hour labels based on maxDurationInHours
+                              if (value % 1 == 0 &&
+                                  value <= maxDurationInHours) {
+                                return SideTitleWidget(
+                                  axisSide: meta.axisSide,
+                                  child: Text(
+                                    value == 0 ? '0' : '${value.toInt()}h',
                                     style: TextStyle(
-                                        color: Colors.grey, fontSize: 10)),
-                              );
+                                        color: Colors.grey, fontSize: 10),
+                                  ),
+                                );
+                              }
+                              return Container();
                             },
                             reservedSize: 30,
+                            interval: maxDurationInHours <= 4
+                                ? 1
+                                : (maxDurationInHours / 4).ceil().toDouble(),
                           ),
                         ),
                         topTitles: AxisTitles(
@@ -117,7 +133,7 @@ class LiveChart extends StatelessWidget {
                         final index = entry.key;
                         final session = entry.value;
 
-                        final durationInHours = session.duration.inMinutes / 60;
+                        final durationInHours = session.durationValue / 60;
 
                         return BarChartGroupData(
                           x: index,

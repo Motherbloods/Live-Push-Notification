@@ -4,29 +4,19 @@ import '../models/live_session.dart';
 class LiveDetailsWidget extends StatelessWidget {
   final List<LiveSession> liveSessions; // Sesi live pada tanggal yang dipilih
   final String username;
+  final List<LiveSession> allSessions; // All sessions for this username
 
   const LiveDetailsWidget({
     Key? key,
     required this.liveSessions,
     required this.username,
+    required this.allSessions, // This should be passed from the parent widget
   }) : super(key: key);
 
   // Mendapatkan sesi live terbaru dari daftar yang diberikan
   LiveSession? _getLatestSession(List<LiveSession> sessions) {
     if (sessions.isEmpty) return null;
-
     return sessions.reduce((a, b) => a.startTime.isAfter(b.startTime) ? a : b);
-  }
-
-  // Mendapatkan semua sesi live untuk username tertentu
-  List<LiveSession> _getAllSessionsForUsername(BuildContext context) {
-    // Mengambil semua data sesi live yang telah difilter berdasarkan username
-    // ini harus diambil dari tempat yang sama dengan LiveNotifierScreen
-    final allSessions = getSampleData()
-        .where((session) => session.username == username)
-        .toList();
-
-    return allSessions;
   }
 
   @override
@@ -35,7 +25,6 @@ class LiveDetailsWidget extends StatelessWidget {
     LiveSession? latestSessionOnSelectedDate = _getLatestSession(liveSessions);
 
     // Cari sesi live terakhir dari semua tanggal
-    List<LiveSession> allSessions = _getAllSessionsForUsername(context);
     LiveSession? overallLatestSession = _getLatestSession(allSessions);
 
     // Gunakan sesi dari tanggal yang dipilih jika ada, jika tidak gunakan sesi terakhir dari keseluruhan
