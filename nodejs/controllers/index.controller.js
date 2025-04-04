@@ -1,5 +1,6 @@
 const axios = require("axios");
 const Token = require("../models/token.js");
+const LiveSessions = require("../models/live_session.js");
 const { checkLiveStatus } = require("../services/liveStatus.js");
 require("dotenv").config();
 
@@ -44,5 +45,12 @@ const storeFCMToken = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
-
-module.exports = { getDataURL, storeFCMToken };
+const getDataDB = async (req, res) => {
+  try {
+    const sessions = await LiveSessions.find().sort({ startTime: -1 });
+    res.json(sessions);
+  } catch (e) {
+    console.log(e.message);
+  }
+};
+module.exports = { getDataURL, storeFCMToken, getDataDB };
