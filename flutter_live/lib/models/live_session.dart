@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class LiveSession {
   final DateTime startTime;
@@ -143,10 +144,12 @@ Future<List<LiveSession>> fetchLiveSessions() async {
 
     // If no valid cache, fetch from API
     print("Fetching live sessions from API");
+    var url = dotenv.env['URL'];
+
     final response = await http.get(
-      Uri.parse("http://192.168.88.30:3000/livesessions"),
+      Uri.parse("$url/livesessions"),
       headers: {"Connection": "close"},
-    ).timeout(Duration(seconds: 10));
+    ).timeout(Duration(seconds: 20));
 
     if (response.statusCode == 200) {
       List<dynamic> data = json.decode(response.body);

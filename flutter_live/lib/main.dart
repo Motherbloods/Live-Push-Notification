@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'screens/live_notifier_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+void main() async {
+  await dotenv.load(fileName: "assets/.env");
   runApp(const MyApp());
 }
 
@@ -11,7 +13,7 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    const String username = '@user123';
+    String username = '@${dotenv.env['USERNAME_TIKTOK']}';
     return MaterialApp(
       title: 'Live Notifier',
       theme: ThemeData(
