@@ -14,9 +14,9 @@ const checkLiveStatus = async (userData) => {
     const scriptContent = $("#SIGI_STATE").html();
     const isLive = /"isLiveBroadcast"\s*:\s*true/.test(userData);
 
-    // if (!scriptContent && !isLive) {
-    //   return { isLive: false, message: "Data tidak ditemukan" };
-    // }
+    if (!scriptContent && !isLive) {
+      return { isLive: false, message: "Data tidak ditemukan" };
+    }
 
     const sigIState = JSON.parse(scriptContent);
     const status = sigIState?.LiveRoom?.liveRoomUserInfo?.user?.status;
